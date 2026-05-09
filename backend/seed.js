@@ -3,11 +3,7 @@ const bcrypt = require('bcryptjs');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 
-<<<<<<< HEAD
 const User = require('./models/user');
-=======
-const User = require('./models/User');
->>>>>>> a8d26e5b505f702abcead44818bff9251ca45ea6
 const Question = require('./models/Question');
 const Exam = require('./models/Exam');
 const Result = require('./models/Result');
@@ -285,22 +281,22 @@ const seedData = async () => {
     await Exam.deleteMany({});
     await Result.deleteMany({});
     
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('123', salt);
+    //const salt = await bcrypt.genSalt(10);
+    //const hashedPassword = await bcrypt.hash('123', salt);
 
     const adminUser = new User({
-      name: 'Admin User',
+      username: 'Admin User',
       email: 'admin@test.com',
       role: 'admin',
-      password: hashedPassword
+      password: '123'
     });
     await adminUser.save();
 
     const teacherUser = new User({
-      name: 'Demo Teacher',
+      username: 'Demo Teacher',
       email: 'teacher@test.com',
       role: 'teacher',
-      password: hashedPassword
+      password: '123'
     });
     await teacherUser.save();
 
@@ -382,10 +378,10 @@ const seedData = async () => {
     await finishedExam.save();
 
     const studentUser = new User({
-      name: 'Demo Student',
+      username: 'Demo Student',
       email: 'student@test.com',
       role: 'student',
-      password: hashedPassword
+      password: '123'
     });
     await studentUser.save();
 
