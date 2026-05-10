@@ -14,6 +14,7 @@ const Exam = require('./models/Exam');
 const Result = require('./models/Result');
 const Class = require('./models/Class'); // Đã thêm import Class ở đây
 const classRoutes = require('./routes/classRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 app.use('/api/classes', classRoutes);
+app.use('/api/admin', adminRoutes);
 
 // --- MIDDLEWARE XÁC THỰC ---
 const authorize = (roles = []) => {

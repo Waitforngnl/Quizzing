@@ -1,17 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react'; // Thêm useMemo
 import AdminNavbar from '../../components/AdminNavbar';
 import './AdminQuestionBank.css';
 
 function AdminQuestionBank() {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // --- THÊM STATE CHO SẮP XẾP ---
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
-  // Bản đồ dịch độ khó sang tiếng Việt
-  const difficultyMap = {
-    easy: 'Dễ',
-    medium: 'Trung bình',
-    hard: 'Khó'
-  };
+  const difficultyMap = { easy: 'Dễ', medium: 'Trung bình', hard: 'Khó' };
+  // Để sắp xếp độ khó chuẩn, ta cần gán trọng số
+  const difficultyWeight = { easy: 1, medium: 2, hard: 3 };
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -29,6 +29,41 @@ function AdminQuestionBank() {
     fetchQuestions();
   }, []);
 
+  // --- LOGIC SẮP XẾP ---
+  const sortedQuestions = useMemo(() => {
+    let sortableItems = [...questions];
+    if (sortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
+
+        // Xử lý riêng cho độ khó (dựa trên trọng số)
+        if (sortConfig.key === 'difficulty') {
+          aValue = difficultyWeight[a.difficulty] || 0;
+          bValue = difficultyWeight[b.difficulty] || 0;
+        }
+
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [questions, sortConfig]);
+
+  const requestSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return '↕️';
+    return sortConfig.direction === 'asc' ? '🔼' : '🔽';
+  };
+
   const handleDelete = async (id) => {
     if (!window.confirm('Bạn có chắc muốn xóa câu hỏi này?')) return;
     try {
@@ -39,7 +74,6 @@ function AdminQuestionBank() {
       if (!res.ok) throw new Error('Xóa thất bại');
       setQuestions(qs => qs.filter(q => q._id !== id));
     } catch (err) {
-      console.error(err);
       alert('Không thể xóa câu hỏi');
     }
   };
@@ -51,9 +85,7 @@ function AdminQuestionBank() {
         <div className="table-card">
           <div className="table-card-header">
             <h2>Danh sách câu hỏi</h2>
-            <div>
-              <button className="btn-create" onClick={() => window.location.href = '/admin/create-question'}>Thêm câu hỏi</button>
-            </div>
+            <button className="btn-create" onClick={() => window.location.href = '/admin/create-question'}>Thêm câu hỏi</button>
           </div>
 
           {loading ? (
@@ -62,15 +94,15 @@ function AdminQuestionBank() {
             <table className="questions-table">
               <thead>
                 <tr>
-                  <th style={{ width: '5%' }}>STT</th>
-                  <th style={{ width: '25%' }}>Môn</th>
-                  <th style={{ width: '15%' }}>Khối</th>
-                  <th style={{ width: '15%' }}>Độ khó</th>
-                  <th style={{ width: '20%' }}>Hành động</th>
+                  <th onClick={() => requestSort(null)} className="sortable">STT {getSortIcon(null)}</th>
+                  <th onClick={() => requestSort('subject')} className="sortable">Môn {getSortIcon('subject')}</th>
+                  <th onClick={() => requestSort('grade')} className="sortable">Khối {getSortIcon('grade')}</th>
+                  <th onClick={() => requestSort('difficulty')} className="sortable">Độ khó {getSortIcon('difficulty')}</th>
+                  <th>Hành động</th>
                 </tr>
               </thead>
               <tbody>
-                {questions.map((q, idx) => (
+                {sortedQuestions.map((q, idx) => (
                   <tr key={q._id}>
                     <td>{idx + 1}</td>
                     <td style={{ fontWeight: 600 }}>{q.subject}</td>
@@ -84,9 +116,6 @@ function AdminQuestionBank() {
                     </td>
                   </tr>
                 ))}
-                {questions.length === 0 && (
-                  <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>Chưa có câu hỏi nào.</td></tr>
-                )}
               </tbody>
             </table>
           )}

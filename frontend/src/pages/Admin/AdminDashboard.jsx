@@ -4,36 +4,35 @@ import AdminFeatures from './AdminFeatures';
 import './AdminDashboard.css';
 
 function AdminDashboard() {
-  const [username, setUsername] = useState('Admin');
-  const [stats, setStats] = useState({ totalUsers: 0, totalTeachers: 0, totalStudents: 0, totalExams: 0 });
+  const [stats, setStats] = useState({ 
+    totalUsers: 0, 
+    totalTeachers: 0, 
+    totalStudents: 0, 
+    totalExams: 0 
+  });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      setUsername(user.name || 'Admin');
+  const fetchStats = async () => {
+    try {
+      const res = await fetch('http://localhost:5001/api/admin/stats');
+      if (!res.ok) throw new Error('Không thể lấy dữ liệu');
+      const data = await res.json();
+      setStats(data);
+    } catch (err) {
+      console.error('Lỗi Dashboard:', err);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const fetchStats = async () => {
-      try {
-        const res = await fetch('http://localhost:5001/api/admin/stats');
-        if (!res.ok) throw new Error('Network response not ok');
-        const data = await res.json();
-        setStats({
-          totalUsers: data.totalUsers || 0,
-          totalTeachers: data.totalTeachers || 0,
-          totalStudents: data.totalStudents || 0,
-          totalExams: data.totalExams || 0,
-        });
-      } catch (err) {
-        console.error('Lỗi khi tải thống kê admin:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  useEffect(() => {
+    fetchStats(); // Chạy ngay khi mở trang
 
-    fetchStats();
+    // Cập nhật thời gian thực mỗi 30 giây
+    const interval = setInterval(fetchStats, 30000); 
+
+    // Xóa bộ đếm khi thoát trang để tiết kiệm tài nguyên
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -42,7 +41,7 @@ function AdminDashboard() {
       <div className="admin-container">
         <div className="admin-header">
           <h1>Hệ thống quản trị</h1>
-          <p>Xin chào, {username}</p>
+          <p>Dữ liệu được cập nhật tự động sau mỗi 30 giây</p>
         </div>
 
         <div className="admin-stats-grid">
@@ -63,8 +62,7 @@ function AdminDashboard() {
             <p className="admin-stat-number">{loading ? '...' : stats.totalExams}</p>
           </div>
         </div>
-
-        {/* Feature cards container */}
+        
         <AdminFeatures />
       </div>
     </div>
