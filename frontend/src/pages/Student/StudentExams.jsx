@@ -10,30 +10,32 @@ function StudentExams() {
   const [filterSubject, setFilterSubject] = useState('All');
 
   useEffect(() => {
-    // Lấy ID học sinh từ localStorage
-    const storedUser = localStorage.getItem('currentUser');
-    const user = storedUser ? JSON.parse(storedUser) : null;
+  const storedUser = localStorage.getItem('currentUser');
+  const user = storedUser ? JSON.parse(storedUser) : null;
+  const token = localStorage.getItem('token'); // Lấy token từ localStorage
 
-    if (user) {
-      // GỌI API MỚI: Truyền studentId để biết bài nào đã làm
-      fetch(`http://localhost:5001/api/exams/student/${user.id || user._id}`)
-        .then(async res => {
-          if (!res.ok) {
-            const text = await res.text();
-            throw new Error(`HTTP ${res.status}: ${text}`);
-          }
-          return res.json();
-        })
-        .then(data => {
-          setExams(data);
-          setLoading(false);
-        })
-        .catch(err => {
-          console.error('Fetch student exams error:', err);
-          setLoading(false);
-        });
-    }
-  }, []);
+  if (user && token) {
+    fetch(`http://localhost:5001/api/exams/student/${user.id || user._id}`, {
+      headers: {
+        // PHẢI CÓ DÒNG NÀY để đi qua middleware authorize() ở Backend
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Lỗi xác thực hoặc server');
+      return res.json();
+    })
+    .then(data => {
+      setExams(data);
+      setLoading(false);
+    })
+    .catch(err => {
+      console.error('Fetch error:', err);
+      setLoading(false);
+    });
+  }
+}, []);
 
   const getSortedExams = () => {
     const now = new Date();

@@ -6,6 +6,7 @@ import './CreateExamFromBank.css';
 function CreateExamFromBank() {
   const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
+  const [classes, setClasses] = useState([]); // TÍNH NĂNG MỚI: Lưu danh sách lớp
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -19,6 +20,7 @@ function CreateExamFromBank() {
     description: '',
     subject: '',
     grade: '',
+    classId: '', // TÍNH NĂNG MỚI: Lưu ID lớp được chọn
     durationMinutes: 45,
     passMark: 5,
     startTime: '',
@@ -29,9 +31,25 @@ function CreateExamFromBank() {
 
   useEffect(() => {
     fetchQuestions();
+    fetchClasses(); // Gọi lấy danh sách lớp khi load trang
   }, []);
 
-  // Nếu Giáo viên đã chọn môn trong phần cấu hình bài thi, khóa bộ lọc ngân hàng vào môn đó
+  // Lấy danh sách lớp học của giáo viên
+  const fetchClasses = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5001/api/classes', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setClasses(data);
+      }
+    } catch (err) {
+      console.error("Lỗi lấy danh sách lớp:", err);
+    }
+  };
+
   useEffect(() => {
     if (examInfo.subject && examInfo.subject !== '') {
       setFilterSubject(examInfo.subject);
@@ -40,7 +58,6 @@ function CreateExamFromBank() {
     }
   }, [examInfo.subject]);
 
-  // Khóa bộ lọc khối lớp nếu đã chọn trong cấu hình bài thi
   useEffect(() => {
     if (examInfo.grade && examInfo.grade !== '') {
       setFilterGrade(examInfo.grade);
@@ -49,7 +66,6 @@ function CreateExamFromBank() {
     }
   }, [examInfo.grade]);
 
-  // Nếu giáo viên vừa import câu hỏi, tự động điền môn và khối lớp từ dữ liệu import
   useEffect(() => {
     if (importedSource) {
       setExamInfo(prev => ({
@@ -62,17 +78,12 @@ function CreateExamFromBank() {
 
   const fetchQuestions = async () => {
     try {
-      // Read imported questions if present, but do NOT override the main bank automatically.
-      // We will show a banner letting teacher choose to use or clear imported set.
       try {
         const imported = localStorage.getItem('importedQuestions');
         if (imported) {
           const parsed = JSON.parse(imported);
           if (Array.isArray(parsed) && parsed.length) {
             setImportedSource(JSON.parse(localStorage.getItem('importedMeta') || 'null'));
-            // store parsed in a ref-like state (questionsImported) by not setting questions yet
-            // We'll let the user choose to apply it via UI
-            // Keep going to fetch the full bank
           }
         }
       } catch (e) {
@@ -102,17 +113,18 @@ function CreateExamFromBank() {
     );
   };
 
-  // --- ĐOẠN ĐÃ SỬA CHỮA (CHỈ GỬI questionIds VÀ creator) ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!examInfo.title) return alert('Vui lòng nhập tiêu đề bài thi');
+    if (!examInfo.classId) return alert('Vui lòng chọn lớp học được tham gia thi');
     if (!examInfo.startTime || !examInfo.endTime) return alert('Vui lòng chọn thời gian bắt đầu và kết thúc');
     if (selectedIds.length === 0) return alert('Vui lòng chọn ít nhất 1 câu hỏi từ ngân hàng!');
 
     const token = localStorage.getItem('token');
     const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
 
+    // Payload đã bao gồm classId bên trong ...examInfo
     const payload = {
       ...examInfo,
       questionIds: selectedIds, 
@@ -132,7 +144,6 @@ function CreateExamFromBank() {
       if (res.ok) {
         const data = await res.json();
         alert("Tạo bài thi thành công!");
-        // Chuyển về trang lịch sử và truyền examId vừa tạo để auto chọn
         navigate('/teacher/history', { state: { selectedExamId: data.examId } });
       } else {
         const errData = await res.json();
@@ -142,7 +153,6 @@ function CreateExamFromBank() {
       alert("Lỗi kết nối đến server!"); 
     }
   };
-  // ---------------------------------------------------------
 
   return (
     <div className="teacher-bg">
@@ -166,6 +176,23 @@ function CreateExamFromBank() {
                 value={examInfo.title} 
                 onChange={e => setExamInfo({...examInfo, title: e.target.value})} 
               />
+            </div>
+
+            {/* TÍNH NĂNG MỚI: Chọn lớp học */}
+            <div className="form-group">
+              <label className="form-label">Gán cho lớp học</label>
+              <select
+                required
+                className="form-control"
+                value={examInfo.classId}
+                onChange={e => setExamInfo({...examInfo, classId: e.target.value})}
+              >
+                <option value="">-- Chọn lớp tham gia thi --</option>
+                {classes.map(c => (
+                  <option key={c._id} value={c._id}>{c.className} (Mã: {c.joinCode})</option>
+                ))}
+              </select>
+              <small style={{color: '#666'}}>Chỉ học sinh trong lớp này mới thấy bài thi.</small>
             </div>
 
             <div className="form-group">
@@ -291,30 +318,26 @@ function CreateExamFromBank() {
               </div>
             </div>
 
-            {/* Nếu có bộ import trong localStorage, hiển thị banner để cho giáo viên quyết định */}
             {importedSource ? (
               <div className="import-banner">
                 <div style={{flex: 1}}>
                   <strong>Nguồn import:</strong> {importedSource.fileName} — Khối {importedSource.grade} / {importedSource.subject}
-                  <div style={{color: '#6b7280', marginTop: 6}}>Hệ thống tìm thấy bộ câu hỏi được import trong trình duyệt. Bạn có thể sử dụng bộ này tạm thời hoặc xóa nó để truy cập toàn bộ ngân hàng câu hỏi.</div>
+                  <div style={{color: '#6b7280', marginTop: 6}}>Hệ thống tìm thấy bộ câu hỏi được import trong trình duyệt.</div>
                 </div>
                 <div style={{display: 'flex', gap: 8}}>
-                  <button className="btn-ghost" onClick={async () => {
-                    // Apply imported questions into the view
+                  <button type="button" className="btn-ghost" onClick={async () => {
                     try {
                       const parsed = JSON.parse(localStorage.getItem('importedQuestions') || '[]');
                       if (Array.isArray(parsed) && parsed.length) {
                         setQuestions(parsed);
-                        // clear selectedIds because ids are synthetic (imp-...)
                         setSelectedIds([]);
                       }
                     } catch (e) { console.error('Apply import failed', e); }
                   }}>Sử dụng bộ import</button>
-                  <button className="btn-danger" onClick={() => {
+                  <button type="button" className="btn-danger" onClick={() => {
                     localStorage.removeItem('importedQuestions');
                     localStorage.removeItem('importedMeta');
                     setImportedSource(null);
-                    // refetch full bank
                     fetchQuestions();
                   }}>Xóa import</button>
                 </div>

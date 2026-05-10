@@ -18,19 +18,20 @@ const ClassDetail = () => {
   }, [id]);
 
   const fetchClassDetails = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get(`http://localhost:5000/api/classes/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setClassData(res.data);
-      setStudents(res.data.students || []);
-      setLoading(false);
-    } catch (err) {
-      console.error(err);
-      alert("Không thể tải thông tin lớp học");
-    }
-  };
+  try {
+    const token = localStorage.getItem('token');
+    // Đảm bảo PORT là 5001 (giống với ManageClasses)
+    const res = await axios.get(`http://localhost:5001/api/classes/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setClassData(res.data);
+    setStudents(res.data.students || []);
+    setLoading(false);
+  } catch (err) {
+    console.error(err);
+    alert("Không thể tải thông tin lớp học"); // Lỗi này đang hiện lên đây
+  }
+};
 
   // Thêm thủ công bằng Email
   const handleAddStudent = async (e) => {

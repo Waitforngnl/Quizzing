@@ -12,6 +12,7 @@ const Profile = require('./models/Profile');
 const Question = require('./models/Question');
 const Exam = require('./models/Exam'); 
 const Result = require('./models/Result');
+const Class = require('./models/Class'); // Đã thêm import Class ở đây
 const classRoutes = require('./routes/classRoutes');
 
 dotenv.config();
@@ -25,7 +26,7 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/classes', classRoutes);
 
-// --- MIDDLEWARE XÁC THỰC (Dùng để lấy thông tin cá nhân an toàn) ---
+// --- MIDDLEWARE XÁC THỰC ---
 const authorize = (roles = []) => {
     return (req, res, next) => {
         const authHeader = req.headers.authorization;
@@ -37,7 +38,7 @@ const authorize = (roles = []) => {
             if (roles.length && !roles.includes(decoded.role)) {
                 return res.status(403).json({ message: 'Không có quyền truy cập' });
             }
-            req.user = decoded; // Lưu id và role vào req.user
+            req.user = decoded; 
             next();
         } catch (err) {
             res.status(401).json({ message: 'Token không hợp lệ' });
@@ -45,7 +46,7 @@ const authorize = (roles = []) => {
     };
 };
 
-// --- 1. ĐĂNG KÝ (Sửa lại để tạo cả Profile) ---
+// --- 1. ĐĂNG KÝ ---
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { username, email, password, role, fullName, phoneNumber, ...otherProfileInfo } = req.body;
@@ -53,16 +54,14 @@ app.post('/api/auth/register', async (req, res) => {
         const existingUser = await User.findOne({ email });
         if (existingUser) return res.status(400).json({ message: 'Email đã tồn tại' });
 
-        // Tạo User
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
         const newUser = new User({ username, email, password: password, role });
         const savedUser = await newUser.save();
 
-        // Tạo Profile liên kết với User vừa tạo
         const newProfile = new Profile({
             user: savedUser._id,
-            fullName: fullName || username, // Nếu không gửi fullName thì lấy tạm username
+            fullName: fullName || username,
             phoneNumber,
             ...otherProfileInfo
         });
@@ -74,7 +73,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
-// --- 2. LẤY THÔNG TIN CÁ NHÂN (Profile) ---
+// --- 2. LẤY THÔNG TIN CÁ NHÂN ---
 app.get('/api/profile/me', authorize(), async (req, res) => {
     try {
         const profile = await Profile.findOne({ user: req.user.id })
@@ -102,7 +101,7 @@ app.put('/api/profile/me', authorize(), async (req, res) => {
     }
 });
 
-// --- CÁC ROUTE AUTH KHÁC ---
+// --- 4. ĐĂNG NHẬP ---
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password, role } = req.body;
@@ -121,7 +120,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// --- QUẢN LÝ CÂU HỎI & KỲ THI (Giữ nguyên của bạn) ---
+// --- 5. QUẢN LÝ CÂU HỎI ---
 app.post('/api/questions', async (req, res) => {
   try {
     const newQuestion = new Question(req.body);
@@ -146,26 +145,42 @@ app.get('/api/questions', async (req, res) => {
   }
 });
 
+// --- 6. QUẢN LÝ KỲ THI (ĐÃ CẬP NHẬT ĐỂ LƯU CLASSID) ---
 app.post('/api/exams', async (req, res) => {
   try {
-    const { title, description, startTime, endTime, questionIds, creator } = req.body;
+    const { 
+      title, description, startTime, endTime, questionIds, creator,
+      classId, subject, grade, durationMinutes, passMark, 
+      randomizeQuestions, showAnswersAfterExam 
+    } = req.body;
+
     const selectedQuestions = await Question.find({ _id: { $in: questionIds } });
     if (selectedQuestions.length === 0) {
       return res.status(400).json({ message: 'Không tìm thấy câu hỏi nào được chọn' });
     }
+
     const examQuestions = selectedQuestions.map(q => ({
       questionText: q.content,
       options: q.options.map(opt => opt.text),
       correctOption: q.correctAnswer === 'A' ? 0 : q.correctAnswer === 'B' ? 1 : q.correctAnswer === 'C' ? 2 : 3
     }));
+
     const newExam = new Exam({
       title,
       description,
       creator,
+      classId, // Gắn ID lớp học vào bài thi
+      subject,
+      grade,
+      durationMinutes,
+      passMark,
+      randomizeQuestions,
+      showAnswersAfterExam,
       startTime,
       endTime,
       questions: examQuestions
     });
+
     await newExam.save();
     res.status(201).json({ message: 'Tạo bài thi thành công!', examId: newExam._id });
   } catch (err) {
@@ -182,33 +197,42 @@ app.get('/api/exams', async (req, res) => {
   }
 });
 
+// --- 7. LẤY BÀI THI CHO HỌC SINH (ĐÃ CẬP NHẬT ĐỂ LỌC THEO LỚP) ---
 app.get('/api/exams/student/:studentId', authorize(), async (req, res) => {
   try {
     const { studentId } = req.params;
 
-    // 1. Tìm tất cả các lớp mà học sinh này là thành viên
-    const Class = require('./models/Class'); // Đảm bảo đã import
+    // 1. Tìm các lớp mà học sinh này đã tham gia
     const userClasses = await Class.find({ students: studentId });
-    const classIds = userClasses.map(c => c._id);
+    
+    if (!userClasses || userClasses.length === 0) {
+      return res.json([]); // Nếu chưa vào lớp nào thì không thấy bài thi
+    }
 
-    // 2. Chỉ lấy các bài thi thuộc về những lớp này
-    const exams = await Exam.find({ classId: { $in: classIds } }).sort({ startTime: 1 });
+    const joinedClassIds = userClasses.map(c => c._id);
 
-    // 3. Kiểm tra trạng thái hoàn thành như cũ
+    // 2. Chỉ tìm bài thi thuộc các lớp học sinh đã tham gia
+    const exams = await Exam.find({ 
+      classId: { $in: joinedClassIds } 
+    }).sort({ startTime: 1 });
+
+    // 3. Kiểm tra bài đã hoàn thành
     const results = await Result.find({ student: studentId }, 'exam');
-    const completedExamIds = results.map(r => r.exam.toString());
+    const completedIds = results.map(r => r.exam.toString());
 
-    const examsWithStatus = exams.map(exam => ({
-      ...exam._doc,
-      isCompleted: completedExamIds.includes(exam._id.toString())
+    const examsWithStatus = exams.map(ex => ({
+      ...ex._doc,
+      isCompleted: completedIds.includes(ex._id.toString())
     }));
 
     res.json(examsWithStatus);
   } catch (err) {
-    res.status(500).json({ message: 'Lỗi khi lấy danh sách bài thi theo lớp' });
+    console.error("Lỗi lấy bài thi HS:", err);
+    res.status(500).json({ message: 'Lỗi server' });
   }
 });
 
+// --- 8. NỘP BÀI & KẾT QUẢ ---
 app.post('/api/results/submit', async (req, res) => {
   try {
     const { examId, studentId, studentAnswers } = req.body;
@@ -257,7 +281,7 @@ app.get('/api/results/student/:studentId', async (req, res) => {
   }
 });
 
-// Thống kê & Bài thi gần đây (Giữ nguyên)
+// --- 9. THỐNG KÊ GIÁO VIÊN ---
 app.get('/api/teacher/stats', async (req, res) => {
   try {
     const totalExams = await Exam.countDocuments();
