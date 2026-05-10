@@ -31,6 +31,7 @@ import ReviewExam from './pages/Student/ReviewExam';
 import ProfileEdit from './pages/ProfileEdit';
 import ManageClasses from './pages/Teacher/ManageClasses';
 import ClassDetail from './pages/Teacher/ClassDetail';
+import JoinClass from './pages/Student/JoinClass';
 
 import './App.css';
 
@@ -97,6 +98,7 @@ function App() {
         <Route path="/admin/audit-log" element={<ProtectedRoute allowedRole="admin"><AuditLog /></ProtectedRoute>} />
         <Route path="/admin/question-bank" element={<ProtectedRoute allowedRole="admin"><AdminQuestionBank /></ProtectedRoute>} />
         <Route path="/admin/create-question" element={<ProtectedRoute allowedRole="admin"><AdminCreateQuestion /></ProtectedRoute>} />
+        <Route path="/student/join-class" element={<ProtectedRoute allowedRole="student"><JoinClass /></ProtectedRoute>} />
       </Routes>
     </Router>
   );

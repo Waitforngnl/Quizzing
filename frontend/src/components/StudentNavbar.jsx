@@ -39,6 +39,11 @@ function StudentNavbar() {
             </Link>
           </li>
           <li>
+            <Link to="/student/join-class" className={isActive('/student/join-class')}>
+              Tham gia lớp học
+            </Link>
+          </li>
+          <li>
             <Link to="/student/join" className={isActive('/student/join')}>
               Tham gia thi
             </Link>

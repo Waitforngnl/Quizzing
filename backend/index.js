@@ -182,10 +182,19 @@ app.get('/api/exams', async (req, res) => {
   }
 });
 
-app.get('/api/exams/student/:studentId', async (req, res) => {
+app.get('/api/exams/student/:studentId', authorize(), async (req, res) => {
   try {
     const { studentId } = req.params;
-    const exams = await Exam.find().sort({ startTime: 1 });
+
+    // 1. Tìm tất cả các lớp mà học sinh này là thành viên
+    const Class = require('./models/Class'); // Đảm bảo đã import
+    const userClasses = await Class.find({ students: studentId });
+    const classIds = userClasses.map(c => c._id);
+
+    // 2. Chỉ lấy các bài thi thuộc về những lớp này
+    const exams = await Exam.find({ classId: { $in: classIds } }).sort({ startTime: 1 });
+
+    // 3. Kiểm tra trạng thái hoàn thành như cũ
     const results = await Result.find({ student: studentId }, 'exam');
     const completedExamIds = results.map(r => r.exam.toString());
 
@@ -196,7 +205,7 @@ app.get('/api/exams/student/:studentId', async (req, res) => {
 
     res.json(examsWithStatus);
   } catch (err) {
-    res.status(500).json({ message: 'Lỗi khi lấy danh sách bài thi', error: err.message });
+    res.status(500).json({ message: 'Lỗi khi lấy danh sách bài thi theo lớp' });
   }
 });
 

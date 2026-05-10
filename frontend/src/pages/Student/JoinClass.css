@@ -1,0 +1,116 @@
+/* Container chính bao phủ toàn màn hình */
+.join-class-container {
+    background-color: #f0f2f5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Card chứa form nhập mã */
+.join-card {
+    max-width: 450px;
+    width: 90%;
+    margin: 80px auto;
+    padding: 40px;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.join-card:hover {
+    transform: translateY(-5px);
+}
+
+.join-card h2 {
+    color: #1e293b;
+    font-size: 24px;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+
+.join-card p {
+    color: #64748b;
+    font-size: 15px;
+    margin-bottom: 30px;
+    line-height: 1.5;
+}
+
+/* Ô nhập mã tham gia */
+.join-input {
+    width: 100%;
+    padding: 15px;
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+    letter-spacing: 4px;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    outline: none;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+}
+
+.join-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.join-input::placeholder {
+    letter-spacing: normal;
+    font-weight: normal;
+    font-size: 16px;
+    color: #94a3b8;
+}
+
+/* Nút tham gia */
+.join-button {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.join-button:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.join-button:active {
+    transform: scale(0.98);
+}
+
+/* Thông báo lỗi hoặc thành công */
+.message-box {
+    margin-top: 25px;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    animation: fadeIn 0.4s ease;
+}
+
+.message-success {
+    background-color: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.message-error {
+    background-color: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
