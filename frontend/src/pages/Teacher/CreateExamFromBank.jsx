@@ -102,6 +102,7 @@ function CreateExamFromBank() {
     );
   };
 
+  // --- ĐOẠN ĐÃ SỬA CHỮA (CHỈ GỬI questionIds VÀ creator) ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -110,18 +111,12 @@ function CreateExamFromBank() {
     if (selectedIds.length === 0) return alert('Vui lòng chọn ít nhất 1 câu hỏi từ ngân hàng!');
 
     const token = localStorage.getItem('token');
-
-    const selectedQuestionsData = questions
-      .filter(q => selectedIds.includes(q._id))
-      .map(q => ({
-        questionText: q.content,
-        options: q.options.map(opt => opt.text || opt), 
-        correctOption: ['A', 'B', 'C', 'D'].indexOf(q.correctAnswer)
-      }));
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
 
     const payload = {
       ...examInfo,
-      questions: selectedQuestionsData
+      questionIds: selectedIds, 
+      creator: currentUser.id || currentUser._id
     };
 
     try {
@@ -147,6 +142,7 @@ function CreateExamFromBank() {
       alert("Lỗi kết nối đến server!"); 
     }
   };
+  // ---------------------------------------------------------
 
   return (
     <div className="teacher-bg">

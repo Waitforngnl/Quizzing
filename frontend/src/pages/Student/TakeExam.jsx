@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './TakeExam.css';
 
+// TÍNH NĂNG MỚI: Import thư viện và CSS của LaTeX
+import 'katex/dist/katex.min.css';
+import Latex from 'react-latex-next';
+
 function TakeExam() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -9,6 +13,22 @@ function TakeExam() {
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [loading, setLoading] = useState(true);
+  
+  const [cheatWarnings, setCheatWarnings] = useState(0);
+  const [showCheatModal, setShowCheatModal] = useState(false); 
+  const [isSubmitting, setIsSubmitting] = useState(false); 
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setCheatWarnings(prev => prev + 1);
+        setShowCheatModal(true); 
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
 
   useEffect(() => {
     fetch(`http://localhost:5001/api/exams`)
@@ -17,10 +37,8 @@ function TakeExam() {
         const found = data.find(ex => ex._id === id);
         if (found) {
           setExam(found);
-          
-          // Logic mới: Lấy trực tiếp durationMinutes (phút) đổi ra giây
-          const seconds = (found.durationMinutes || 0) * 60;
-          setTimeLeft(seconds);
+          const validMinutes = (found.durationMinutes && found.durationMinutes > 0) ? found.durationMinutes : 45;
+          setTimeLeft(validMinutes * 60);
         }
         setLoading(false);
       })
@@ -28,17 +46,18 @@ function TakeExam() {
   }, [id]);
 
   useEffect(() => {
-    // Nếu hết giờ (timeLeft === 0) và đã load xong data thì nộp bài
-    if (!loading && timeLeft > 0) {
+    if (!loading && timeLeft > 0 && !showCheatModal) {
       const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
       return () => clearInterval(timer);
-    } else if (timeLeft === 0 && !loading && exam) {
+    } else if (timeLeft <= 0 && !loading && exam && !isSubmitting) {
       handleFinish();
     }
     // eslint-disable-next-line
-  }, [timeLeft, loading, exam]);
+  }, [timeLeft, loading, exam, showCheatModal, isSubmitting]);
 
   const handleFinish = async () => {
+    setIsSubmitting(true); 
+    
     const storedUser = localStorage.getItem('currentUser');
     if (!storedUser) {
       alert("Hết phiên làm việc, vui lòng đăng nhập lại");
@@ -61,13 +80,15 @@ function TakeExam() {
 
       const data = await res.json();
       if (res.ok) {
-        alert(`Nộp bài thành công! Điểm của bạn: ${data.score}`);
+        alert(`Nộp bài thành công!\nĐiểm của bạn: ${data.score}\nSố lần cảnh báo gian lận: ${cheatWarnings}`);
         navigate('/student/join');
       } else {
         alert(data.message || "Lỗi khi nộp bài");
+        setIsSubmitting(false); 
       }
     } catch (err) {
       alert("Không thể kết nối đến máy chủ");
+      setIsSubmitting(false);
     }
   };
 
@@ -76,17 +97,44 @@ function TakeExam() {
 
   return (
     <div className="take-exam-page">
+      
+      {showCheatModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex',
+          justifyContent: 'center', alignItems: 'center', zIndex: 9999
+        }}>
+          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', textAlign: 'center', maxWidth: '400px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
+            <h2 style={{ color: '#d63031', marginTop: 0, fontSize: '24px' }}>⚠️ CẢNH BÁO GIAN LẬN</h2>
+            <p style={{ fontSize: '16px', color: '#2d3436' }}>Bạn vừa rời khỏi trang thi! Hệ thống đã ghi nhận hành động này.</p>
+            <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#d63031' }}>Lần vi phạm: {cheatWarnings}</p>
+            <button 
+              onClick={() => setShowCheatModal(false)}
+              style={{ backgroundColor: '#0984e3', color: 'white', border: 'none', padding: '12px 25px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', marginTop: '15px', fontSize: '16px' }}
+            >
+              Tôi đã hiểu và cam kết không tái phạm
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="exam-sidebar">
+        {cheatWarnings > 0 && (
+          <div style={{ backgroundColor: '#ffcccc', color: '#d63031', padding: '10px', borderRadius: '5px', marginBottom: '15px', fontWeight: 'bold', border: '1px solid #d63031', textAlign: 'center' }}>
+            ⚠️ Vi phạm: {cheatWarnings} lần
+          </div>
+        )}
+
         <div className="timer-box">
           <span>Thời gian còn lại</span>
           <div className={`time-display ${timeLeft < 60 ? 'warning' : ''}`}>
             {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
           </div>
           <div className="time-info">
-             {/* Hiển thị tổng thời gian dựa trên durationMinutes */}
-            {exam.durationMinutes || 0} phút
+             {exam.durationMinutes || 45} phút
           </div>
         </div>
+        
         <div className="question-nav">
           <div className="nav-grid">
             {exam.questions.map((_, idx) => (
@@ -96,7 +144,14 @@ function TakeExam() {
             ))}
           </div>
         </div>
-        <button className="btn-submit-exam" onClick={handleFinish}>Nộp bài</button>
+        
+        <button 
+          className="btn-submit-exam" 
+          onClick={handleFinish}
+          disabled={isSubmitting} 
+        >
+          {isSubmitting ? 'Đang nộp...' : 'Nộp bài'}
+        </button>
       </div>
 
       <div className="exam-main">
@@ -104,7 +159,12 @@ function TakeExam() {
         <div className="questions-container">
           {exam.questions.map((q, qIdx) => (
             <div key={qIdx} className="question-card">
-              <p><strong>Câu {qIdx + 1}:</strong> {q.questionText}</p>
+              {/* TÍNH NĂNG MỚI: Bọc nội dung câu hỏi trong thẻ Latex */}
+              <div style={{ fontSize: '16px', marginBottom: '15px' }}>
+                <strong>Câu {qIdx + 1}: </strong> 
+                <Latex>{q.questionText}</Latex>
+              </div>
+              
               <div className="options-list">
                 {q.options.map((opt, oIdx) => (
                   <label key={oIdx} className={`option-item ${answers[qIdx] === oIdx ? 'selected' : ''}`}>
@@ -112,8 +172,12 @@ function TakeExam() {
                       type="radio" 
                       name={`q-${qIdx}`} 
                       onChange={() => setAnswers({...answers, [qIdx]: oIdx})}
+                      checked={answers[qIdx] === oIdx} 
                     />
-                    <span>{String.fromCharCode(65 + oIdx)}. {opt}</span>
+                    {/* TÍNH NĂNG MỚI: Bọc nội dung đáp án trong thẻ Latex */}
+                    <span style={{ marginLeft: '10px' }}>
+                      {String.fromCharCode(65 + oIdx)}. <Latex>{opt}</Latex>
+                    </span>
                   </label>
                 ))}
               </div>
