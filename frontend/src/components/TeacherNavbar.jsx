@@ -36,6 +36,12 @@ function TeacherNavbar() {
               Tổng quan
             </Link>
           </li>
+          {/* TÍNH NĂNG MỚI: Nút Quản lý Lớp học */}
+          <li>
+            <Link to="/teacher/classes" className={location.pathname.startsWith('/teacher/classes') ? 'teacher-nav-link active' : 'teacher-nav-link'}>
+              Quản lý Lớp học
+            </Link>
+          </li>
           <li>
             <Link to="/teacher/organize" className={location.pathname === '/teacher/organize' ? 'teacher-nav-link active' : 'teacher-nav-link'}>
               Tổ chức thi

@@ -1,0 +1,68 @@
+.class-detail-container {
+  padding: 20px;
+  background-color: #f4f7f6;
+  min-height: 100vh;
+}
+
+.content-section {
+  max-width: 1000px;
+  margin: 0 auto;
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin: 30px 0;
+}
+
+.action-card {
+  border: 1px solid #e0e0e0;
+  padding: 20px;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.action-card h3 { margin-top: 0; color: #333; }
+
+.action-card input[type="email"], 
+.action-card input[type="file"] {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.action-card button {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.student-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.student-table th, .student-table td {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.status-joined {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85em;
+}

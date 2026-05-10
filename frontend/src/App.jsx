@@ -29,6 +29,9 @@ import TakeExam from './pages/Student/TakeExam';
 import StudentHistory from './pages/Student/StudentHistory';
 import ReviewExam from './pages/Student/ReviewExam';
 import ProfileEdit from './pages/ProfileEdit';
+import ManageClasses from './pages/Teacher/ManageClasses';
+import ClassDetail from './pages/Teacher/ClassDetail';
+
 import './App.css';
 
 const StudentPlaceholder = ({ title }) => (
@@ -80,6 +83,10 @@ function App() {
         <Route path="/teacher/create-exam" element={<ProtectedRoute allowedRole="teacher"><TeacherPlaceholder title="Tạo Bài Thi" /></ProtectedRoute>} />
         <Route path="/teacher/history" element={<ProtectedRoute allowedRole="teacher"><TeacherExamHistory /></ProtectedRoute>} />
         <Route path="/teacher/profile-edit" element={<ProtectedRoute allowedRole="teacher"><ProfileEdit /></ProtectedRoute>} />
+        
+        {/* TÍNH NĂNG MỚI: Route dẫn đến trang Quản lý Lớp học */}
+        <Route path="/teacher/classes" element={<ProtectedRoute allowedRole="teacher"><ManageClasses /></ProtectedRoute>} />
+        <Route path="/teacher/class/:id" element={<ProtectedRoute allowedRole="teacher"><ClassDetail /></ProtectedRoute>} />
 
         <Route path="/admin" element={<ProtectedRoute allowedRole="admin"><AdminDashboard /></ProtectedRoute>} />
         <Route path="/student/profile-edit" element={<ProtectedRoute allowedRole="student"><ProfileEdit /></ProtectedRoute>} />

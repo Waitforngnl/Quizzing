@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './TakeExam.css';
-
-// TÍNH NĂNG MỚI: Import thư viện và CSS của LaTeX
 import 'katex/dist/katex.min.css';
 import Latex from 'react-latex-next';
+
+const shuffleArray = (array) => {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
 
 function TakeExam() {
   const { id } = useParams();
@@ -13,10 +20,14 @@ function TakeExam() {
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [displayQuestions, setDisplayQuestions] = useState([]);
   
   const [cheatWarnings, setCheatWarnings] = useState(0);
   const [showCheatModal, setShowCheatModal] = useState(false); 
   const [isSubmitting, setIsSubmitting] = useState(false); 
+
+  // TÍNH NĂNG MỚI: Khóa lưu trữ cho bài thi này
+  const draftKey = `draft_exam_${id}`;
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -25,11 +36,11 @@ function TakeExam() {
         setShowCheatModal(true); 
       }
     };
-
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
+  // KHỞI TẠO BÀI THI HOẶC PHỤC HỒI TỪ BẢN LƯU NHÁP
   useEffect(() => {
     fetch(`http://localhost:5001/api/exams`)
       .then(res => res.json())
@@ -37,14 +48,60 @@ function TakeExam() {
         const found = data.find(ex => ex._id === id);
         if (found) {
           setExam(found);
-          const validMinutes = (found.durationMinutes && found.durationMinutes > 0) ? found.durationMinutes : 45;
-          setTimeLeft(validMinutes * 60);
+          
+          // Kiểm tra xem có bản lưu nháp nào không (Học sinh bị rớt mạng/F5)
+          const savedDraft = localStorage.getItem(draftKey);
+          
+          if (savedDraft) {
+            // PHỤC HỒI DỮ LIỆU
+            const draft = JSON.parse(savedDraft);
+            setAnswers(draft.answers);
+            setTimeLeft(draft.timeLeft);
+            setDisplayQuestions(draft.displayQuestions);
+            setCheatWarnings(draft.cheatWarnings || 0);
+          } else {
+            // TẠO MỚI HOÀN TOÀN
+            const validMinutes = (found.durationMinutes && found.durationMinutes > 0) ? found.durationMinutes : 45;
+            setTimeLeft(validMinutes * 60);
+
+            let preparedQs = found.questions.map((q, qIdx) => ({
+              ...q,
+              originalQIdx: qIdx, 
+              displayOptions: q.options.map((optText, oIdx) => ({
+                text: optText,
+                originalOIdx: oIdx 
+              }))
+            }));
+
+            if (found.randomizeQuestions) {
+              preparedQs = shuffleArray(preparedQs);
+              preparedQs = preparedQs.map(q => ({
+                ...q,
+                displayOptions: shuffleArray(q.displayOptions)
+              }));
+            }
+            setDisplayQuestions(preparedQs);
+          }
         }
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [id]);
+  }, [id, draftKey]);
 
+  // TÍNH NĂNG MỚI: AUTO-SAVE NGẦM MỖI KHI CÓ THAY ĐỔI
+  useEffect(() => {
+    if (!loading && displayQuestions.length > 0 && timeLeft > 0 && !isSubmitting) {
+      const draftData = {
+        answers,
+        timeLeft,
+        displayQuestions,
+        cheatWarnings
+      };
+      localStorage.setItem(draftKey, JSON.stringify(draftData));
+    }
+  }, [answers, timeLeft, displayQuestions, cheatWarnings, loading, isSubmitting, draftKey]);
+
+  // BỘ ĐẾM THỜI GIAN
   useEffect(() => {
     if (!loading && timeLeft > 0 && !showCheatModal) {
       const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
@@ -68,7 +125,7 @@ function TakeExam() {
     const payload = {
       examId: id,
       studentId: user.id || user._id,
-      studentAnswers: answers
+      studentAnswers: answers 
     };
 
     try {
@@ -80,6 +137,9 @@ function TakeExam() {
 
       const data = await res.json();
       if (res.ok) {
+        // Nộp bài thành công thì xóa luôn bản nháp
+        localStorage.removeItem(draftKey);
+        
         alert(`Nộp bài thành công!\nĐiểm của bạn: ${data.score}\nSố lần cảnh báo gian lận: ${cheatWarnings}`);
         navigate('/student/join');
       } else {
@@ -97,7 +157,6 @@ function TakeExam() {
 
   return (
     <div className="take-exam-page">
-      
       {showCheatModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -109,7 +168,11 @@ function TakeExam() {
             <p style={{ fontSize: '16px', color: '#2d3436' }}>Bạn vừa rời khỏi trang thi! Hệ thống đã ghi nhận hành động này.</p>
             <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#d63031' }}>Lần vi phạm: {cheatWarnings}</p>
             <button 
-              onClick={() => setShowCheatModal(false)}
+              onClick={() => {
+                setShowCheatModal(false);
+                // Ép lưu bản nháp ngay khi tắt modal để update số lần gian lận
+                localStorage.setItem(draftKey, JSON.stringify({ answers, timeLeft, displayQuestions, cheatWarnings }));
+              }}
               style={{ backgroundColor: '#0984e3', color: 'white', border: 'none', padding: '12px 25px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', marginTop: '15px', fontSize: '16px' }}
             >
               Tôi đã hiểu và cam kết không tái phạm
@@ -137,19 +200,15 @@ function TakeExam() {
         
         <div className="question-nav">
           <div className="nav-grid">
-            {exam.questions.map((_, idx) => (
-              <div key={idx} className={`nav-item ${answers[idx] !== undefined ? 'answered' : ''}`}>
-                {idx + 1}
+            {displayQuestions.map((q, displayIdx) => (
+              <div key={displayIdx} className={`nav-item ${answers[q.originalQIdx] !== undefined ? 'answered' : ''}`}>
+                {displayIdx + 1}
               </div>
             ))}
           </div>
         </div>
         
-        <button 
-          className="btn-submit-exam" 
-          onClick={handleFinish}
-          disabled={isSubmitting} 
-        >
+        <button className="btn-submit-exam" onClick={handleFinish} disabled={isSubmitting}>
           {isSubmitting ? 'Đang nộp...' : 'Nộp bài'}
         </button>
       </div>
@@ -157,26 +216,24 @@ function TakeExam() {
       <div className="exam-main">
         <h2>{exam.title}</h2>
         <div className="questions-container">
-          {exam.questions.map((q, qIdx) => (
-            <div key={qIdx} className="question-card">
-              {/* TÍNH NĂNG MỚI: Bọc nội dung câu hỏi trong thẻ Latex */}
+          {displayQuestions.map((q, displayIdx) => (
+            <div key={displayIdx} className="question-card">
               <div style={{ fontSize: '16px', marginBottom: '15px' }}>
-                <strong>Câu {qIdx + 1}: </strong> 
+                <strong>Câu {displayIdx + 1}: </strong> 
                 <Latex>{q.questionText}</Latex>
               </div>
               
               <div className="options-list">
-                {q.options.map((opt, oIdx) => (
-                  <label key={oIdx} className={`option-item ${answers[qIdx] === oIdx ? 'selected' : ''}`}>
+                {q.displayOptions.map((opt, oDisplayIdx) => (
+                  <label key={oDisplayIdx} className={`option-item ${answers[q.originalQIdx] === opt.originalOIdx ? 'selected' : ''}`}>
                     <input 
                       type="radio" 
-                      name={`q-${qIdx}`} 
-                      onChange={() => setAnswers({...answers, [qIdx]: oIdx})}
-                      checked={answers[qIdx] === oIdx} 
+                      name={`q-${q.originalQIdx}`} 
+                      onChange={() => setAnswers({...answers, [q.originalQIdx]: opt.originalOIdx})}
+                      checked={answers[q.originalQIdx] === opt.originalOIdx} 
                     />
-                    {/* TÍNH NĂNG MỚI: Bọc nội dung đáp án trong thẻ Latex */}
                     <span style={{ marginLeft: '10px' }}>
-                      {String.fromCharCode(65 + oIdx)}. <Latex>{opt}</Latex>
+                      {String.fromCharCode(65 + oDisplayIdx)}. <Latex>{opt.text}</Latex>
                     </span>
                   </label>
                 ))}

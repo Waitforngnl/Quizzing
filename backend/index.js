@@ -12,6 +12,7 @@ const Profile = require('./models/Profile');
 const Question = require('./models/Question');
 const Exam = require('./models/Exam'); 
 const Result = require('./models/Result');
+const classRoutes = require('./routes/classRoutes');
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ connectDB();
 
 app.use(cors());
 app.use(express.json());
+app.use('/api/classes', classRoutes);
 
 // --- MIDDLEWARE XÁC THỰC (Dùng để lấy thông tin cá nhân an toàn) ---
 const authorize = (roles = []) => {
