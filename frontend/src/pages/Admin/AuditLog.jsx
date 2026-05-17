@@ -18,7 +18,7 @@ function AuditLog() {
       const params = [];
       if (search) params.push(`search=${encodeURIComponent(search)}`);
       if (actionFilter) params.push(`action=${encodeURIComponent(actionFilter)}`);
-      const url = `/api/audit-log${params.length ? '?' + params.join('&') : ''}`;
+      const url = `http://localhost:5001/api/audit-log${params.length ? '?' + params.join('&') : ''}`; // Tránh lỗi định tuyến chéo cổng
       const res = await fetch(url);
       const data = await res.json();
       console.log('[AuditLog] fetch', { url, status: res.status, length: Array.isArray(data) ? data.length : 0 });

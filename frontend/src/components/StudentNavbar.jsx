@@ -19,10 +19,33 @@ function StudentNavbar() {
     return location.pathname === path ? 'student-nav-link active' : 'student-nav-link';
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('currentUser');
-    navigate('/login');
+// CẬP NHẬT HÀM HANDLE LOGOUT GHI LOG ĐĂNG XUẤT:
+  const handleLogout = async () => {
+    if (!window.confirm('Bạn có chắc chắn muốn đăng xuất không?')) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const username = user.name || 'Học sinh';
+
+      await fetch('http://localhost:5001/api/audit-log', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          user: username,
+          action: 'Đăng xuất',
+          detail: `Học sinh ${username} đã đăng xuất khỏi hệ thống.`
+        })
+      });
+    } catch (err) {
+      console.error('Lỗi ghi nhận log đăng xuất:', err);
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('currentUser');
+      navigate('/login');
+    }
   };
 
   return (

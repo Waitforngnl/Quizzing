@@ -42,7 +42,7 @@ function AdminFeatures() {
         <div className="feature-card">
           <div className="card-body">
             <h3>Lịch sử hoạt động</h3>
-            <p>Xem lịch sử thao tác của người dùng trên hệ thống.</p>
+            <p>Xem lịch sử đăng nhập của người dùng trên hệ thống.</p>
           </div>
           <div className="card-footer">
             <button className="btn-settings" onClick={() => navigate('/admin/audit-log')}>SETTINGS</button>

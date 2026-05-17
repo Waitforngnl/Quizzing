@@ -15,6 +15,8 @@ const Result = require('./models/Result');
 const Class = require('./models/Class'); // Đã thêm import Class ở đây
 const classRoutes = require('./routes/classRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const auditLogRoutes = require('./routes/auditLog');
+const AuditLog = require('./models/AuditLog'); // Import trực tiếp model để ghi log login
 
 dotenv.config();
 
@@ -27,6 +29,7 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/classes', classRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/audit-log', auditLogRoutes);
 
 // --- MIDDLEWARE XÁC THỰC ---
 const authorize = (roles = []) => {
@@ -167,6 +170,24 @@ app.post('/api/auth/login', async (req, res) => {
     res.json({
       token,
       user: { id: user._id, name: user.name, email: user.email, role: user.role }
+    });
+  // TÍCH HỢP GHI LOG ĐĂNG NHẬP THÀNH CÔNG
+    const log = new AuditLog({
+      user: user.username, 
+      action: 'Đăng nhập', 
+      detail: `Người dùng ${user.username} (Vai trò: ${user.role}) đã đăng nhập vào hệ thống thành công.`,
+      time: new Date()
+    });
+    await log.save(); // Lưu vào cơ sở dữ liệu
+
+    // Phản hồi trả về (Đảm bảo trả về đủ thông tin user để frontend lưu lại)
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.username, // Hoặc trường hiển thị tên của bạn
+        role: user.role
+      }
     });
   } catch (err) {
     res.status(500).json({ message: 'Lỗi server' });
