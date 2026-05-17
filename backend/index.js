@@ -75,6 +75,57 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
+// --- 1b. ĐĂNG KÝ HÀNG LOẠT TỪ EXCEL (DÀNH CHO ADMIN) ---
+app.post('/api/auth/bulk-register', async (req, res) => {
+    try {
+        const { users } = req.body; // Nhận mảng danh sách user từ frontend
+        if (!Array.isArray(users) || users.length === 0) {
+            return res.status(400).json({ message: 'Danh sách dữ liệu trống.' });
+        }
+
+        let successCount = 0;
+        let failureCount = 0;
+        let details = [];
+
+        for (const u of users) {
+            try {
+                const existingUser = await User.findOne({ email: u.email });
+                if (existingUser) {
+                    failureCount++;
+                    continue;
+                }
+
+                const salt = await bcrypt.genSalt(10);
+                const hashedPassword = await bcrypt.hash(u.password.toString(), salt);
+
+                const newUser = new User({
+                    username: u.username,
+                    email: u.email,
+                    password: hashedPassword, 
+                    role: u.role || 'student'
+                });
+                const savedUser = await newUser.save();
+
+                const newProfile = new Profile({
+                    user: savedUser._id,
+                    fullName: u.username
+                });
+                await newProfile.save();
+
+                successCount++;
+            } catch (singleErr) {
+                failureCount++;
+            }
+        }
+
+        res.status(201).json({
+            message: `Thêm hàng loạt hoàn tất! Tạo thành công: ${successCount} tài khoản. Bỏ qua trùng lặp/lỗi: ${failureCount} tài khoản.`
+        });
+    } catch (err) {
+        res.status(500).json({ message: 'Lỗi server khi import dữ liệu', error: err.message });
+    }
+});
+
 // --- 2. LẤY THÔNG TIN CÁ NHÂN ---
 app.get('/api/profile/me', authorize(), async (req, res) => {
     try {
