@@ -270,6 +270,18 @@ app.get('/api/exams', async (req, res) => {
   }
 });
 
+app.get('/api/exams/:id', async (req, res) => {
+  try {
+    const exam = await Exam.findById(req.params.id);
+    if (!exam) {
+      return res.status(404).json({ message: 'Không tìm thấy bài thi' });
+    }
+    return res.json(exam); // Nhớ có return để tránh lỗi HEADERS_SENT
+  } catch (err) {
+    return res.status(500).json({ message: 'Lỗi server khi lấy chi tiết bài thi' });
+  }
+});
+
 // --- 7. LẤY BÀI THI CHO HỌC SINH ---
 app.get('/api/exams/student/:studentId', authorize(), async (req, res) => {
   try {
