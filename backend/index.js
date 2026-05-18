@@ -12,11 +12,11 @@ const Profile = require('./models/Profile');
 const Question = require('./models/Question');
 const Exam = require('./models/Exam'); 
 const Result = require('./models/Result');
-const Class = require('./models/Class'); // Đã thêm import Class ở đây
+const Class = require('./models/Class');
 const classRoutes = require('./routes/classRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const auditLogRoutes = require('./routes/auditLog');
-const AuditLog = require('./models/AuditLog'); // Import trực tiếp model để ghi log login
+const AuditLog = require('./models/AuditLog');
 
 dotenv.config();
 
@@ -46,7 +46,7 @@ const authorize = (roles = []) => {
             req.user = decoded; 
             next();
         } catch (err) {
-            res.status(401).json({ message: 'Token không hợp lệ' });
+            return res.status(401).json({ message: 'Token không hợp lệ' });
         }
     };
 };
@@ -171,26 +171,25 @@ app.post('/api/auth/login', async (req, res) => {
       token,
       user: { id: user._id, name: user.name, email: user.email, role: user.role }
     });
-  // TÍCH HỢP GHI LOG ĐĂNG NHẬP THÀNH CÔNG
+
     const log = new AuditLog({
       user: user.username, 
       action: 'Đăng nhập', 
       detail: `Người dùng ${user.username} (Vai trò: ${user.role}) đã đăng nhập vào hệ thống thành công.`,
       time: new Date()
     });
-    await log.save(); // Lưu vào cơ sở dữ liệu
+    await log.save();
 
-    // Phản hồi trả về (Đảm bảo trả về đủ thông tin user để frontend lưu lại)
     res.json({
       token,
       user: {
         id: user._id,
-        name: user.username, // Hoặc trường hiển thị tên của bạn
+        name: user.username,
         role: user.role
       }
     });
   } catch (err) {
-    res.status(500).json({ message: 'Lỗi server' });
+    return res.status(500).json({ message: 'Lỗi server' });
   }
 });
 
@@ -219,7 +218,7 @@ app.get('/api/questions', async (req, res) => {
   }
 });
 
-// --- 6. QUẢN LÝ KỲ THI (ĐÃ CẬP NHẬT ĐỂ LƯU CLASSID) ---
+// --- 6. QUẢN LÝ KỲ THI ---
 app.post('/api/exams', async (req, res) => {
   try {
     const { 
@@ -243,7 +242,7 @@ app.post('/api/exams', async (req, res) => {
       title,
       description,
       creator,
-      classId, // Gắn ID lớp học vào bài thi
+      classId,
       subject,
       grade,
       durationMinutes,
@@ -271,7 +270,7 @@ app.get('/api/exams', async (req, res) => {
   }
 });
 
-// --- 7. LẤY BÀI THI CHO HỌC SINH (ĐÃ CẬP NHẬT ĐỂ LỌC THEO LỚP) ---
+// --- 7. LẤY BÀI THI CHO HỌC SINH ---
 app.get('/api/exams/student/:studentId', authorize(), async (req, res) => {
   try {
     const { studentId } = req.params;
@@ -280,7 +279,7 @@ app.get('/api/exams/student/:studentId', authorize(), async (req, res) => {
     const userClasses = await Class.find({ students: studentId });
     
     if (!userClasses || userClasses.length === 0) {
-      return res.json([]); // Nếu chưa vào lớp nào thì không thấy bài thi
+      return res.json([]);
     }
 
     const joinedClassIds = userClasses.map(c => c._id);
