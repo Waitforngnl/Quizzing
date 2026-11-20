@@ -1,0 +1,53 @@
+{
+  "name": "quizzing",
+  "private": true,
+  "scripts": {
+    "start": "env-cmd meteor run",
+    "migrate": "node-pg-migrate",
+    "migrate:create": "node-pg-migrate create",
+    "test": "meteor test --once --driver-package meteortesting:mocha",
+    "test-app": "TEST_WATCH=1 meteor test --full-app --driver-package meteortesting:mocha",
+    "visualize": "meteor --production --extra-packages bundle-visualizer"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.23.5",
+    "@swc/helpers": "^0.5.17",
+    "@types/cors": "^2.8.19",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "express": "^5.2.1",
+    "imports": "^1.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "jwk-to-pem": "^2.0.7",
+    "meteor-node-stubs": "^1.2.12",
+    "mongodb": "^7.0.0",
+    "node-pg-migrate": "^8.0.4",
+    "pg": "^8.16.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "@prisma/client": "^4.16.2",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/meteor": "^2.9.10",
+    "@types/mocha": "^8.2.3",
+    "@types/node": "^22.19.3",
+    "@types/pg": "^8.16.0",
+    "@types/react": "^18.2.5",
+    "@types/react-dom": "^18.2.4",
+    "dotenv-cli": "^11.0.0",
+    "env-cmd": "^11.0.0",
+    "nodemon": "^3.1.11",
+    "typescript": "^5.4.5"
+  },
+  "meteor": {
+    "mainModule": {
+      "client": "client/main.tsx",
+      "server": "server/main.ts"
+    },
+    "testModule": "tests/main.ts",
+    "modern": true
+  }
+}
